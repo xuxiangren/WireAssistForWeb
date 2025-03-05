@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据可视化 - 钼丝助手</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 10px;
+        }
+        .nav-container {
+            max-width: 100%;
+            margin: 0 auto 15px auto;
+        }
+        .visualization-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            width: 100%;
+            height: 600px;
+            margin-top: 20px;
+        }
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+            }
+            .nav-container {
+                max-width: 600px;
+            }
+            .visualization-container {
+                max-width: 1200px;
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <nav class="navbar navbar-expand navbar-light bg-white rounded-3 shadow-sm">
+            <div class="container-fluid">
+                <ul class="navbar-nav w-100">
+                    <li class="nav-item flex-fill text-center">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-calculator me-2"></i>计算器
+                        </a>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <a class="nav-link" href="history.html">
+                            <i class="fas fa-history me-2"></i>历史记录
+                        </a>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <a class="nav-link active" href="visualization.html">
+                            <i class="fas fa-chart-bar me-2"></i>数据分析
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+
+    <div class="visualization-container">
+        <div class="chart-container" id="lifespanChart"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化ECharts实例
+            const chart = echarts.init(document.getElementById('lifespanChart'));
+            
+            // 从localStorage获取历史记录数据
+            const history = JSON.parse(localStorage.getItem('wireCalculatorHistory')) || [];
+            
+            // 计算每个设备的总寿命
+            function calculateDeviceLifespans(records) {
+                const deviceLifespans = {};
+                
+                records.forEach(record => {
+                    if (record.scrapDate) {
+                        const scrapTime = new Date(record.scrapDate);
+                        const createTime = new Date(record.id);
+                        const lifespan = (scrapTime - createTime) / (1000 * 60 * 60);
+                        
+                        if (lifespan >= 0) {
+                            if (!deviceLifespans[record.deviceName]) {
+                                deviceLifespans[record.deviceName] = 0;
+                            }
+                            deviceLifespans[record.deviceName] += lifespan;
+                        }
+                    }
+                });
+                
+                return deviceLifespans;
+            }
+            
+            // 更新图表
+            function updateChart(records) {
+                const deviceLifespans = calculateDeviceLifespans(records);
+                const devices = Object.keys(deviceLifespans);
+                const lifespans = devices.map(device => deviceLifespans[device]);
+                
+                const option = {
+                    title: {
+                        text: '各设备钼丝总寿命对比',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        },
+                        formatter: function(params) {
+                            return `${params[0].name}<br/>总寿命: ${params[0].value.toFixed(2)} 小时`;
+                        }
+                    },
+                    grid: {
+                        left: '5%',
+                        right: '5%',
+                        bottom: '10%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: devices,
+                        axisLabel: {
+                            interval: 0,
+                            rotate: 30
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: '总寿命（小时）'
+                    },
+                    series: [{
+                        name: '总寿命',
+                        type: 'bar',
+                        data: lifespans,
+                        itemStyle: {
+                            color: '#2c3e50'
+                        },
+                        emphasis: {
+                            itemStyle: {
+                                color: '#34495e'
+                            }
+                        }
+                    }]
+                };
+                
+                chart.setOption(option);
+            }
+            
+            // 检查是否有保存的筛选条件
+            const savedFilters = JSON.parse(localStorage.getItem('wireCalculatorFilters')) || {};
+            
+            // 如果有保存的筛选条件，应用筛选
+            if (Object.keys(savedFilters).length > 0) {
+                const filteredRecords = history.filter(record => {
+                    // 设备名称筛选
+                    if (savedFilters.deviceValue && record.deviceName !== savedFilters.deviceValue) {
+                        return false;
+                    }
+                    
+                    // 钼丝寿命筛选
+                    if (record.scrapDate) {
+                        const scrapTime = new Date(record.scrapDate);
+                        const createTime = new Date(record.id);
+                        const lifespan = (scrapTime - createTime) / (1000 * 60 * 60);
+                        
+                        if (savedFilters.minLifespan !== null && lifespan < savedFilters.minLifespan) {
+                            return false;
+                        }
+                        
+                        if (savedFilters.maxLifespan !== null && lifespan > savedFilters.maxLifespan) {
+                            return false;
+                        }
+                    } else if (savedFilters.minLifespan !== null) {
+                        // 如果设置了最小寿命但记录没有报废时间，则排除
+                        return false;
+                    }
+                    
+                    // 日期范围筛选
+                    const recordDate = new Date(record.id);
+                    if (savedFilters.startDate && recordDate < new Date(savedFilters.startDate)) {
+                        return false;
+                    }
+                    
+                    if (savedFilters.endDate && recordDate > new Date(savedFilters.endDate + 'T23:59:59')) {
+                        return false;
+                    }
+                    
+                    return true;
+                });
+                
+                updateChart(filteredRecords);
+            } else {
+                // 初始显示全部数据
+                updateChart(history);
+            }
+            
+            // 监听窗口大小变化，调整图表大小
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+            
+            // 导出全局函数以供其他页面调用
+            window.updateVisualization = function(filteredRecords) {
+                updateChart(filteredRecords || history);
+            };
+        });
+    </script>
+</body>
+</html>

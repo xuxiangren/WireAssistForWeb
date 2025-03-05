@@ -353,7 +353,7 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         }
         
         localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
-        displayHistory();
+        updateHistoryAndApplyFilters();
         
         if (isCalculatorPage) {
             initDropdowns();
@@ -396,6 +396,15 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
             const startDate = dateStart.value ? new Date(dateStart.value) : null;
             const endDate = dateEnd.value ? new Date(dateEnd.value + 'T23:59:59') : null;
             
+            // 保存筛选条件到localStorage
+            localStorage.setItem('filterConditions', JSON.stringify({
+                deviceValue,
+                minLifespan,
+                maxLifespan,
+                startDate: startDate ? startDate.toISOString() : null,
+                endDate: endDate ? endDate.toISOString() : null
+            }));
+
             const filteredRecords = history.filter(record => {
                 // 设备名称筛选
                 if (deviceValue && record.deviceName !== deviceValue) {
@@ -432,6 +441,9 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
                 
                 return true;
             });
+            
+            // 保存筛选结果到localStorage
+            localStorage.setItem('filteredRecords', JSON.stringify(filteredRecords));
             
             // 显示筛选后的记录
             displayHistory(filteredRecords);
@@ -602,7 +614,7 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         if (confirm('确定要删除这条记录吗？')) {
             history = history.filter(r => r.id !== id);
             localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
-            displayHistory();
+            updateHistoryAndApplyFilters();
         }
     };
 
@@ -612,6 +624,82 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         const loadId = urlParams.get('load');
         if (loadId) {
             window.loadRecord(parseInt(loadId));
+        }
+    }
+
+    // 在页面加载时应用保存的筛选条件和结果
+    window.addEventListener('DOMContentLoaded', function() {
+        const savedConditions = JSON.parse(localStorage.getItem('filterConditions'));
+        if (savedConditions) {
+            const deviceFilter = document.getElementById('deviceFilter');
+            const lifespanMin = document.getElementById('lifespanMin');
+            const lifespanMax = document.getElementById('lifespanMax');
+            const dateStart = document.getElementById('dateStart');
+            const dateEnd = document.getElementById('dateEnd');
+
+            deviceFilter.value = savedConditions.deviceValue || '';
+            lifespanMin.value = savedConditions.minLifespan || '';
+            lifespanMax.value = savedConditions.maxLifespan || '';
+            dateStart.value = savedConditions.startDate ? new Date(savedConditions.startDate).toISOString().slice(0, 10) : '';
+            dateEnd.value = savedConditions.endDate ? new Date(savedConditions.endDate).toISOString().slice(0, 10) : '';
+        }
+        updateHistoryAndApplyFilters();
+    });
+
+    // 在历史记录变动后重新应用筛选条件
+    function updateHistoryAndApplyFilters() {
+        const savedConditions = JSON.parse(localStorage.getItem('filterConditions'));
+        if (savedConditions) {
+            const deviceValue = savedConditions.deviceValue || '';
+            const minLifespan = savedConditions.minLifespan || null;
+            const maxLifespan = savedConditions.maxLifespan || null;
+            const startDate = savedConditions.startDate ? new Date(savedConditions.startDate) : null;
+            const endDate = savedConditions.endDate ? new Date(savedConditions.endDate) : null;
+
+            const filteredRecords = history.filter(record => {
+                // 设备名称筛选
+                if (deviceValue && record.deviceName !== deviceValue) {
+                    return false;
+                }
+                
+                // 钼丝寿命筛选
+                if (record.scrapDate) {
+                    const scrapTime = new Date(record.scrapDate);
+                    const createTime = new Date(record.id);
+                    const lifespan = (scrapTime - createTime) / (1000 * 60 * 60);
+                    
+                    if (minLifespan !== null && lifespan < minLifespan) {
+                        return false;
+                    }
+                    
+                    if (maxLifespan !== null && lifespan > maxLifespan) {
+                        return false;
+                    }
+                } else if (minLifespan !== null) {
+                    // 如果设置了最小寿命但记录没有报废时间，则排除
+                    return false;
+                }
+                
+                // 日期范围筛选
+                const recordDate = new Date(record.id);
+                if (startDate && recordDate < startDate) {
+                    return false;
+                }
+                
+                if (endDate && recordDate > endDate) {
+                    return false;
+                }
+                
+                return true;
+            });
+
+            // 保存筛选结果到localStorage
+            localStorage.setItem('filteredRecords', JSON.stringify(filteredRecords));
+            
+            // 显示筛选后的记录
+            displayHistory(filteredRecords);
+        } else {
+            displayHistory();
         }
     }
 });
