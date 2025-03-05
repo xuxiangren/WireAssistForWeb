@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isHistoryPage) {
         // 显示历史记录
         displayHistory();
+        
+        // 初始化筛选功能
+        initFilters();
 
         // 导出历史记录
         document.getElementById('exportHistory').addEventListener('click', function() {
@@ -112,15 +115,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1500);
     }
     
-    function displayHistory() {
+    function displayHistory(filteredRecords) {
         const historyTableBody = document.getElementById('historyTableBody');
         const historyCardsContainer = document.getElementById('historyCardsContainer');
+        
+        // 使用筛选后的记录或全部记录
+        const recordsToDisplay = filteredRecords || history;
         
         // 如果是表格视图
         if (historyTableBody) {
             historyTableBody.innerHTML = '';
             
-            history.forEach(record => {
+            recordsToDisplay.forEach(record => {
                 // 计算钼丝寿命
                 let lifespan = '';
                 if (record.scrapDate) {
@@ -160,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (historyCardsContainer) {
             historyCardsContainer.innerHTML = '';
             
-            history.forEach(record => {
+            recordsToDisplay.forEach(record => {
                 // 计算钼丝寿命
                 let lifespan = '';
                 if (record.scrapDate) {
@@ -251,6 +257,84 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         }
     }
 
+    // 初始化筛选功能
+    function initFilters() {
+        const deviceFilter = document.getElementById('deviceFilter');
+        const lifespanMin = document.getElementById('lifespanMin');
+        const lifespanMax = document.getElementById('lifespanMax');
+        const dateStart = document.getElementById('dateStart');
+        const dateEnd = document.getElementById('dateEnd');
+        
+        // 填充设备名称筛选下拉菜单
+        const uniqueDevices = new Set();
+        history.forEach(record => {
+            if (record.deviceName) uniqueDevices.add(record.deviceName);
+        });
+        
+        deviceFilter.innerHTML = '<option value="">全部设备</option>';
+        uniqueDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device;
+            option.textContent = device;
+            deviceFilter.appendChild(option);
+        });
+        
+        // 添加筛选事件监听
+        const filterElements = [deviceFilter, lifespanMin, lifespanMax, dateStart, dateEnd];
+        filterElements.forEach(element => {
+            element.addEventListener('change', applyFilters);
+        });
+        
+        // 应用筛选条件
+        function applyFilters() {
+            const deviceValue = deviceFilter.value;
+            const minLifespan = lifespanMin.value ? parseFloat(lifespanMin.value) : null;
+            const maxLifespan = lifespanMax.value ? parseFloat(lifespanMax.value) : null;
+            const startDate = dateStart.value ? new Date(dateStart.value) : null;
+            const endDate = dateEnd.value ? new Date(dateEnd.value + 'T23:59:59') : null;
+            
+            const filteredRecords = history.filter(record => {
+                // 设备名称筛选
+                if (deviceValue && record.deviceName !== deviceValue) {
+                    return false;
+                }
+                
+                // 钼丝寿命筛选
+                if (record.scrapDate) {
+                    const scrapTime = new Date(record.scrapDate);
+                    const createTime = new Date(record.id);
+                    const lifespan = (scrapTime - createTime) / (1000 * 60 * 60);
+                    
+                    if (minLifespan !== null && lifespan < minLifespan) {
+                        return false;
+                    }
+                    
+                    if (maxLifespan !== null && lifespan > maxLifespan) {
+                        return false;
+                    }
+                } else if (minLifespan !== null) {
+                    // 如果设置了最小寿命但记录没有报废时间，则排除
+                    return false;
+                }
+                
+                // 日期范围筛选
+                const recordDate = new Date(record.id);
+                if (startDate && recordDate < startDate) {
+                    return false;
+                }
+                
+                if (endDate && recordDate > endDate) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // 显示筛选后的记录
+            displayHistory(filteredRecords);
+        }
+    }
+    
     // 编辑记录相关功能
     if (isHistoryPage) {
         const editModal = new bootstrap.Modal(document.getElementById('editRecordModal'));

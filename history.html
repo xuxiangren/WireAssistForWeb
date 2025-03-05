@@ -143,6 +143,32 @@
                 </button>
             </div>
         </div>
+        <div class="filter-section mb-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">设备名称</label>
+                    <select class="form-select" id="deviceFilter">
+                        <option value="">全部设备</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">钼丝寿命范围（小时）</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="lifespanMin" placeholder="最小值">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" id="lifespanMax" placeholder="最大值">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">日期范围</label>
+                    <div class="input-group">
+                        <input type="date" class="form-control" id="dateStart">
+                        <span class="input-group-text">-</span>
+                        <input type="date" class="form-control" id="dateEnd">
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="history-cards" id="historyCardsContainer"></div>
     </div>
 
