@@ -191,10 +191,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // 清空当前显示的历史记录
         document.getElementById('clearHistory').addEventListener('click', function() {
             if (confirm('确定要清空当前显示的历史记录吗？此操作不可恢复！')) {
+                const initialDeviceCount = new Set(history.map(record => record.deviceName)).size;
                 const filteredRecords = JSON.parse(localStorage.getItem('filteredRecords')) || [];
                 history = history.filter(record => !filteredRecords.some(filteredRecord => filteredRecord.id === record.id));
                 localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
                 refreshHistoryCards();
+                const newDeviceCount = new Set(history.map(record => record.deviceName)).size;
+                if (newDeviceCount < initialDeviceCount) {
+                    refreshDeviceFilter();
+                }
             }
         });
     }
@@ -616,9 +621,14 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
     
     window.deleteRecord = function(id) {
         if (confirm('确定要删除这条记录吗？')) {
+            const initialDeviceCount = new Set(history.map(record => record.deviceName)).size;
             history = history.filter(r => r.id !== id);
             localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
             refreshHistoryCards();
+            const newDeviceCount = new Set(history.map(record => record.deviceName)).size;
+            if (newDeviceCount < initialDeviceCount) {
+                refreshDeviceFilter();
+            }
         }
     };
 
@@ -715,5 +725,22 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         } else {
             displayHistory();
         }
+    }
+
+    // 刷新设备名称下拉菜单
+    function refreshDeviceFilter() {
+        const deviceFilter = document.getElementById('deviceFilter');
+        const uniqueDevices = new Set(history.map(record => record.deviceName));
+        
+        // 清空下拉菜单
+        deviceFilter.innerHTML = '<option value="">全部设备</option>';
+        
+        // 添加设备名称到下拉菜单
+        uniqueDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device;
+            option.textContent = device;
+            deviceFilter.appendChild(option);
+        });
     }
 });
