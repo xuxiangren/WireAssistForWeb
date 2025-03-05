@@ -188,12 +188,13 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.removeChild(link);
         }
         
-        // 清空历史记录
+        // 清空当前显示的历史记录
         document.getElementById('clearHistory').addEventListener('click', function() {
-            if (confirm('确定要清空所有历史记录吗？此操作不可恢复！')) {
-                history = [];
+            if (confirm('确定要清空当前显示的历史记录吗？此操作不可恢复！')) {
+                const filteredRecords = JSON.parse(localStorage.getItem('filteredRecords')) || [];
+                history = history.filter(record => !filteredRecords.some(filteredRecord => filteredRecord.id === record.id));
                 localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
-                displayHistory();
+                refreshHistoryCards();
             }
         });
     }
@@ -353,7 +354,7 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         }
         
         localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
-        updateHistoryAndApplyFilters();
+        refreshHistoryCards();
         
         if (isCalculatorPage) {
             initDropdowns();
@@ -487,7 +488,7 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
                 record.totalLength = totalLength.toFixed(2);
 
                 localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
-                displayHistory();
+                refreshHistoryCards();
                 editModal.hide();
             }
         });
@@ -614,7 +615,7 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         if (confirm('确定要删除这条记录吗？')) {
             history = history.filter(r => r.id !== id);
             localStorage.setItem('wireCalculatorHistory', JSON.stringify(history));
-            updateHistoryAndApplyFilters();
+            refreshHistoryCards();
         }
     };
 
@@ -646,7 +647,14 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
         updateHistoryAndApplyFilters();
     });
 
-    // 在历史记录变动后重新应用筛选条件
+    // 当历史记录发生变更时，刷新历史记录卡片
+    function refreshHistoryCards() {
+        if (isHistoryPage) {
+            updateHistoryAndApplyFilters();
+        }
+    }
+
+    // 在历史记录变更后调用刷新函数
     function updateHistoryAndApplyFilters() {
         const savedConditions = JSON.parse(localStorage.getItem('filterConditions'));
         if (savedConditions) {
