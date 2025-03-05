@@ -79,8 +79,8 @@
             // 初始化ECharts实例
             const chart = echarts.init(document.getElementById('lifespanChart'));
             
-            // 从localStorage获取历史记录数据
-            const history = JSON.parse(localStorage.getItem('wireCalculatorHistory')) || [];
+            // 从localStorage获取当前显示的卡片数据
+            const currentDisplayRecords = JSON.parse(localStorage.getItem('currentDisplayRecords')) || [];
             
             // 计算每个设备的总寿命
             function calculateDeviceLifespans(records) {
@@ -109,6 +109,12 @@
                 const deviceLifespans = calculateDeviceLifespans(records);
                 const devices = Object.keys(deviceLifespans);
                 const lifespans = devices.map(device => deviceLifespans[device]);
+
+                // 按照总寿命从多到少排序
+                const sortedIndices = lifespans.map((value, index) => index)
+                    .sort((a, b) => lifespans[b] - lifespans[a]);
+                const sortedDevices = sortedIndices.map(index => devices[index]);
+                const sortedLifespans = sortedIndices.map(index => lifespans[index]);
                 
                 const option = {
                     title: {
@@ -132,7 +138,7 @@
                     },
                     xAxis: {
                         type: 'category',
-                        data: devices,
+                        data: sortedDevices,
                         axisLabel: {
                             interval: 0,
                             rotate: 30
@@ -145,7 +151,7 @@
                     series: [{
                         name: '总寿命',
                         type: 'bar',
-                        data: lifespans,
+                        data: sortedLifespans,
                         itemStyle: {
                             color: '#2c3e50'
                         },
@@ -160,63 +166,13 @@
                 chart.setOption(option);
             }
             
-            // 检查是否有保存的筛选条件
-            const savedFilters = JSON.parse(localStorage.getItem('wireCalculatorFilters')) || {};
-            
-            // 如果有保存的筛选条件，应用筛选
-            if (Object.keys(savedFilters).length > 0) {
-                const filteredRecords = history.filter(record => {
-                    // 设备名称筛选
-                    if (savedFilters.deviceValue && record.deviceName !== savedFilters.deviceValue) {
-                        return false;
-                    }
-                    
-                    // 钼丝寿命筛选
-                    if (record.scrapDate) {
-                        const scrapTime = new Date(record.scrapDate);
-                        const createTime = new Date(record.id);
-                        const lifespan = (scrapTime - createTime) / (1000 * 60 * 60);
-                        
-                        if (savedFilters.minLifespan !== null && lifespan < savedFilters.minLifespan) {
-                            return false;
-                        }
-                        
-                        if (savedFilters.maxLifespan !== null && lifespan > savedFilters.maxLifespan) {
-                            return false;
-                        }
-                    } else if (savedFilters.minLifespan !== null) {
-                        // 如果设置了最小寿命但记录没有报废时间，则排除
-                        return false;
-                    }
-                    
-                    // 日期范围筛选
-                    const recordDate = new Date(record.id);
-                    if (savedFilters.startDate && recordDate < new Date(savedFilters.startDate)) {
-                        return false;
-                    }
-                    
-                    if (savedFilters.endDate && recordDate > new Date(savedFilters.endDate + 'T23:59:59')) {
-                        return false;
-                    }
-                    
-                    return true;
-                });
-                
-                updateChart(filteredRecords);
-            } else {
-                // 初始显示全部数据
-                updateChart(history);
-            }
+            // 初始显示当前显示的卡片数据
+            updateChart(currentDisplayRecords);
             
             // 监听窗口大小变化，调整图表大小
             window.addEventListener('resize', function() {
                 chart.resize();
             });
-            
-            // 导出全局函数以供其他页面调用
-            window.updateVisualization = function(filteredRecords) {
-                updateChart(filteredRecords || history);
-            };
         });
     </script>
 </body>

@@ -446,6 +446,9 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
             // 保存筛选结果到localStorage
             localStorage.setItem('filteredRecords', JSON.stringify(filteredRecords));
             
+            // 持久化当前显示的卡片数据
+            localStorage.setItem('currentDisplayRecords', JSON.stringify(filteredRecords));
+            
             // 显示筛选后的记录
             displayHistory(filteredRecords);
         }
@@ -703,6 +706,9 @@ function saveToHistory(deviceName, drumDiameter, wireDiameter, axialLength, tota
 
             // 保存筛选结果到localStorage
             localStorage.setItem('filteredRecords', JSON.stringify(filteredRecords));
+            
+            // 持久化当前显示的卡片数据
+            localStorage.setItem('currentDisplayRecords', JSON.stringify(filteredRecords));
             
             // 显示筛选后的记录
             displayHistory(filteredRecords);
