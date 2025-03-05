@@ -68,14 +68,117 @@ document.addEventListener('DOMContentLoaded', function() {
         // 初始化筛选功能
         initFilters();
 
-        // 导出历史记录
-        document.getElementById('exportHistory').addEventListener('click', function() {
-            const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + // 添加BOM以支持中文
-                '时间,设备名称,运丝筒直径(mm),钼丝直径(mm),轴向长度(mm),总长度(m)\n' +
-                history.map(record => {
-                    return `${record.date},${record.deviceName},${record.drumDiameter},${record.wireDiameter},${record.axialLength},${record.totalLength}`;
+        // 导出相关变量
+        let currentExportMode = 'all'; // 默认导出全部
+        const exportBtn = document.getElementById('exportHistory');
+        const exportBtnText = document.getElementById('exportBtnText');
+        const exportDropdown = document.getElementById('exportDropdown');
+        
+        // 初始化导出下拉菜单
+        updateExportUI();
+        
+        // 导出按钮点击事件
+        exportBtn.addEventListener('click', function() {
+            exportData(currentExportMode);
+        });
+        
+        // 导出下拉菜单点击事件
+        exportDropdown.addEventListener('click', function(e) {
+            if (e.target.classList.contains('dropdown-item')) {
+                e.preventDefault();
+                const exportType = e.target.getAttribute('data-export-type');
+                if (exportType) {
+                    currentExportMode = exportType === 'filtered' ? 'filtered' : 'all';
+                    updateExportUI();
+                    exportData(currentExportMode);
+                }
+            }
+        });
+        
+        // 更新导出UI
+        function updateExportUI() {
+            // 更新主按钮文本
+            exportBtnText.textContent = currentExportMode === 'all' ? '导出全部' : '导出显示';
+            
+            // 更新下拉菜单选项
+            exportDropdown.innerHTML = '';
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.classList.add('dropdown-item');
+            a.href = '#';
+            a.setAttribute('data-export-type', currentExportMode === 'all' ? 'filtered' : 'all');
+            a.textContent = currentExportMode === 'all' ? '导出显示' : '导出全部';
+            li.appendChild(a);
+            exportDropdown.appendChild(li);
+        }
+        
+        // 导出数据函数
+        function exportData(mode) {
+            // 确定要导出的数据
+            let dataToExport;
+            if (mode === 'filtered') {
+                // 获取当前筛选条件
+                const deviceValue = document.getElementById('deviceFilter').value;
+                const minLifespan = document.getElementById('lifespanMin').value ? parseFloat(document.getElementById('lifespanMin').value) : null;
+                const maxLifespan = document.getElementById('lifespanMax').value ? parseFloat(document.getElementById('lifespanMax').value) : null;
+                const startDate = document.getElementById('dateStart').value ? new Date(document.getElementById('dateStart').value) : null;
+                const endDate = document.getElementById('dateEnd').value ? new Date(document.getElementById('dateEnd').value + 'T23:59:59') : null;
+                
+                // 应用筛选
+                dataToExport = history.filter(record => {
+                    // 设备名称筛选
+                    if (deviceValue && record.deviceName !== deviceValue) {
+                        return false;
+                    }
+                    
+                    // 钼丝寿命筛选
+                    if (record.scrapDate) {
+                        const scrapTime = new Date(record.scrapDate);
+                        const createTime = new Date(record.id);
+                        const lifespan = (scrapTime - createTime) / (1000 * 60 * 60);
+                        
+                        if (minLifespan !== null && lifespan < minLifespan) {
+                            return false;
+                        }
+                        
+                        if (maxLifespan !== null && lifespan > maxLifespan) {
+                            return false;
+                        }
+                    } else if (minLifespan !== null) {
+                        // 如果设置了最小寿命但记录没有报废时间，则排除
+                        return false;
+                    }
+                    
+                    // 日期范围筛选
+                    const recordDate = new Date(record.id);
+                    if (startDate && recordDate < startDate) {
+                        return false;
+                    }
+                    
+                    if (endDate && recordDate > endDate) {
+                        return false;
+                    }
+                    
+                    return true;
+                });
+            } else {
+                dataToExport = history;
+            }
+            
+            // 生成CSV内容
+            const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' +
+                '时间,设备名称,运丝筒直径(mm),钼丝直径(mm),轴向长度(mm),总长度(m),钼丝报废时间,钼丝寿命(小时)\n' +
+                dataToExport.map(record => {
+                    let lifespan = '';
+                    if (record.scrapDate) {
+                        const scrapTime = new Date(record.scrapDate);
+                        const createTime = new Date(record.id);
+                        lifespan = ((scrapTime - createTime) / (1000 * 60 * 60)).toFixed(2);
+                    }
+                    return `${formatDateTime(new Date(record.id))},${record.deviceName},${record.drumDiameter},${record.wireDiameter},${record.axialLength},${record.totalLength},${record.scrapDate ? formatDateTime(new Date(record.scrapDate)) : ''},${lifespan}`;
                 }).join('\n');
             
+            // 下载CSV文件
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement('a');
             link.setAttribute('href', encodedUri);
@@ -83,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        });
+        }
         
         // 清空历史记录
         document.getElementById('clearHistory').addEventListener('click', function() {

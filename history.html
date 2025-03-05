@@ -135,9 +135,17 @@
         <div class="history-title">
             <h3>历史记录</h3>
             <div>
-                <button class="btn btn-outline-secondary btn-sm" id="exportHistory">
-                    <i class="fas fa-file-export me-1"></i>导出
-                </button>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary btn-sm" id="exportHistory">
+                        <i class="fas fa-file-export me-1"></i><span id="exportBtnText">导出全部</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" id="exportDropdown">
+                        <li><a class="dropdown-item" href="#" data-export-type="filtered">导出显示</a></li>
+                    </ul>
+                </div>
                 <button class="btn btn-outline-danger btn-sm ms-2" id="clearHistory">
                     <i class="fas fa-trash me-1"></i>清空
                 </button>
